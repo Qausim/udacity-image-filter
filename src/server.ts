@@ -1,5 +1,6 @@
 import express, { NextFunction, Response, Request } from 'express';
 import bodyParser from 'body-parser';
+import Axios from "axios";
 import {filterImageFromURL, deleteLocalFiles} from './util/util';
 
 (async () => {
@@ -18,6 +19,15 @@ import {filterImageFromURL, deleteLocalFiles} from './util/util';
     else res.status(400).send('Please supply an "image_url" query parameter');
   };
 
+  const isValidImageSource = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await Axios.get(req.query.image_url as string);
+      next();
+    } catch (error) {
+      res.status(403).send('Invalid image source');
+    }
+  }
+
   // @TODO1 IMPLEMENT A RESTFUL ENDPOINT
   // GET /filteredimage?image_url={{URL}}
   // endpoint to filter an image from a public url.
@@ -33,8 +43,9 @@ import {filterImageFromURL, deleteLocalFiles} from './util/util';
   //   the filtered image file [!!TIP res.sendFile(filteredpath); might be useful]
 
   /**************************************************************************** */
-  app.get('/filteredimage', validateImageURLQueryParams, async (req, res) => {
-    const { image_url } = req.query;
+  app.get('/filteredimage', validateImageURLQueryParams, isValidImageSource, async (req: Request, res: Response) => {
+    // image_url type is obtained from the generics passed into the Request type
+    const { image_url } = req.query as { image_url: string; };
     try {
       const imagePath = await filterImageFromURL(image_url);
       res.status(200).sendFile(imagePath, () => {
